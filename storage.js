@@ -64,7 +64,7 @@ function phaseProgress(state, phaseId) {
   const correctCount = hist.filter(h => h.correct).length;
   const pct = correctCount / hist.length;
   const avgMs = hist.reduce((sum, h) => sum + h.ms, 0) / hist.length;
-  const ready = hist.length >= 20 && pct >= 0.9 && avgMs <= 8000;
+  const ready = hist.length >= 15 && pct >= 0.9 && avgMs <= 12000;
   return { pct, avgMs, ready, count: hist.length };
 }
 

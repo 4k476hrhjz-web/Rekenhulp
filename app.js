@@ -75,7 +75,7 @@ function renderBeads(container, n, colorClass = '') {
   });
 }
 
-// ---------- Home screen ----------
+// ---------- Mascotte ----------
 function setMascotStage(mascotId, levelId, stage) {
   const mascot = document.getElementById(mascotId);
   if (mascot) mascot.setAttribute('data-stage', stage);
@@ -83,6 +83,7 @@ function setMascotStage(mascotId, levelId, stage) {
   if (level) level.textContent = 'Lv' + (stage + 1);
 }
 
+// ---------- Home screen ----------
 function renderHome() {
   setMascotStage('mascot-home', 'mascot-home-level', state.plantStage);
   document.getElementById('streak-count').textContent = state.streak.count;
@@ -217,6 +218,11 @@ function handleAnswer(value, btn) {
     saveState(state);
     setTimeout(() => {
       if (!session) return;
+      if (maybeAdvancePhase(state)) {
+        addPhaseBadgeIfNeeded(state, state.currentPhaseId - 1);
+        finishSession(true);
+        return;
+      }
       session.index += 1;
       renderQuestion();
     }, 450);
@@ -243,20 +249,25 @@ function handleAnswer(value, btn) {
   }
 }
 
-function endSession() {
+function finishSession(advanced) {
   if (!session) return;
   const finishedSession = session;
   session = null; // voorkomt dubbele afronding door dubbele setTimeout-aanroepen
 
   clearDueReviews(state, finishedSession.dueKeys);
-  const advanced = maybeAdvancePhase(state);
-  if (advanced) {
-    addPhaseBadgeIfNeeded(state, state.currentPhaseId - 1);
-  }
   updateStreakAndPlant(state);
   logSpeedSample(state, finishedSession.phase.id);
   saveState(state);
   showReward(advanced, finishedSession);
+}
+
+function endSession() {
+  if (!session) return;
+  const advanced = maybeAdvancePhase(state);
+  if (advanced) {
+    addPhaseBadgeIfNeeded(state, state.currentPhaseId - 1);
+  }
+  finishSession(advanced);
 }
 
 function showReward(advanced, finishedSession) {
@@ -377,7 +388,10 @@ function renderDashboard() {
     const row = document.createElement('div');
     row.className = 'phase-row';
     const dotClass = p.id < state.currentPhaseId ? 'done' : (p.id === state.currentPhaseId ? 'current' : '');
-    row.innerHTML = `<span class="phase-dot ${dotClass}"></span><span>Fase ${p.id}: ${p.name} ${p.id === state.currentPhaseId ? `— ${Math.round(prog.pct*100)}% goed` : ''}</span>`;
+    const detail = p.id === state.currentPhaseId
+      ? ` — ${Math.round(prog.pct * 100)}% goed, ${Math.min(prog.count, 15)}/15 sommen${prog.avgMs != null ? `, gem. ${(prog.avgMs / 1000).toFixed(1)}s` : ''}`
+      : '';
+    row.innerHTML = `<span class="phase-dot ${dotClass}"></span><span>Fase ${p.id}: ${p.name}${detail}</span>`;
     phaseList.appendChild(row);
   });
 
@@ -413,7 +427,7 @@ function renderSpeedChart() {
   svg.innerHTML = '';
   const data = state.speedLog.slice(-15);
   if (data.length < 2) {
-    svg.innerHTML = '<text x="150" y="70" font-size="14" text-anchor="middle" fill="#a08a6e">Nog niet genoeg data</text>';
+    svg.innerHTML = '<text x="150" y="70" font-size="14" text-anchor="middle" fill="#9c8f82">Nog niet genoeg data</text>';
     return;
   }
   const w = 300, h = 140, pad = 10;
@@ -428,7 +442,7 @@ function renderSpeedChart() {
   const polyline = document.createElementNS(ns, 'polyline');
   polyline.setAttribute('points', points);
   polyline.setAttribute('fill', 'none');
-  polyline.setAttribute('stroke', '#ff9f45');
+  polyline.setAttribute('stroke', '#ff3fa4');
   polyline.setAttribute('stroke-width', '3');
   svg.appendChild(polyline);
   data.forEach((d, i) => {
@@ -436,7 +450,7 @@ function renderSpeedChart() {
     const y = h - pad - (d.avgMs / maxMs) * (h - pad * 2);
     const c = document.createElementNS(ns, 'circle');
     c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('r', 4);
-    c.setAttribute('fill', '#ff7e26');
+    c.setAttribute('fill', '#a259ff');
     svg.appendChild(c);
   });
 }
